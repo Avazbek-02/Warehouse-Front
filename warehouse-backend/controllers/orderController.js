@@ -83,39 +83,61 @@ exports.updateOrder = async (req, res) => {
   session.startTransaction();
 
   try {
-    const oldOrder = await Order.findById(req.params.id);
+    const oldOrder = req.body.originalOrder || await Order.findById(req.params.id);
     if (!oldOrder) {
       throw new Error('Order not found');
     }
 
-    // Eski buyurtmadagi mahsulotlarni omborga qaytarish
-    for (const oldItem of oldOrder.items) {
-      const product = await Product.findOne({ name: oldItem.name });
-      if (product) {
-        // Eski o'zgarishlarni bekor qilish: faqat haqiqiy chiqarilgan miqdorni qaytarish
-        const oldNetQuantity = oldItem.quantity - (oldItem.returned || 0);
-        product.quantity += oldNetQuantity;
-        await product.save({ session });
-      }
-    }
-
-    // Yangi buyurtma ma'lumotlarini qo'llash
+    // Har bir mahsulot uchun omborni yangilash
     for (const newItem of req.body.items) {
       const product = await Product.findOne({ name: newItem.name });
       if (!product) {
         throw new Error(`Product ${newItem.name} not found`);
       }
 
-      // Yangi miqdorni hisoblash: buyurtma - qaytarilgan
-      const newNetQuantity = newItem.quantity - (newItem.returned || 0);
+      // Eski buyurtmadagi shu mahsulotni topish
+      const oldItem = oldOrder.items.find(item => item.name === newItem.name);
       
-      if (product.quantity < newNetQuantity) {
-        throw new Error(`Not enough inventory for ${newItem.name}. Available: ${product.quantity}, Required: ${newNetQuantity}`);
+      if (oldItem) {
+        // Eski va yangi sof miqdorlarni hisoblash (buyurtma - qaytarilgan)
+        const oldNetQuantity = oldItem.quantity - (oldItem.returned || 0);
+        const newNetQuantity = newItem.quantity - (newItem.returned || 0);
+        
+        // Farqni hisoblash
+        const quantityDifference = newNetQuantity - oldNetQuantity;
+        
+        // Agar farq musbat bo'lsa, ombordan ayirish
+        // Agar manfiy bo'lsa, omborga qaytarish
+        product.quantity -= quantityDifference;
+        
+        // Ombordagi miqdor manfiy bo'lmasligi kerak
+        if (product.quantity < 0) {
+          throw new Error(`Not enough inventory for ${product.name}. Available: ${product.quantity + quantityDifference}`);
+        }
+      } else {
+        // Yangi qo'shilgan mahsulot - to'liq miqdorni ombordan ayirish
+        const requestedQuantity = newItem.quantity - (newItem.returned || 0);
+        if (requestedQuantity > product.quantity) {
+          throw new Error(`Not enough inventory for ${newItem.name}. Available: ${product.quantity}`);
+        }
+        product.quantity -= requestedQuantity;
       }
-
-      // Faqat haqiqiy kerakli miqdorni ayirish
-      product.quantity -= newNetQuantity;
+      
       await product.save({ session });
+    }
+
+    // Eski buyurtmadagi, lekin yangi buyurtmada yo'q mahsulotlarni omborga qaytarish
+    for (const oldItem of oldOrder.items) {
+      const stillExists = req.body.items.some(item => item.name === oldItem.name);
+      if (!stillExists) {
+        const product = await Product.findOne({ name: oldItem.name });
+        if (product) {
+          // Sof miqdorni omborga qaytarish (buyurtma - qaytarilgan)
+          const returnQuantity = oldItem.quantity - (oldItem.returned || 0);
+          product.quantity += returnQuantity;
+          await product.save({ session });
+        }
+      }
     }
 
     // Buyurtmani yangilash

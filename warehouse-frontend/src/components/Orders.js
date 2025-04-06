@@ -201,13 +201,24 @@ function Orders() {
             products.find(p => p._id === item.productId)?.name === i.name
           );
           
-          // Yangi buyurilgan miqdor eskisidan ko'p bo'lsa, qo'shimcha miqdor uchun inventarni tekshiramiz
-          if (originalItem && item.quantity > originalItem.quantity) {
-            const additionalQuantity = item.quantity - originalItem.quantity;
-            if (additionalQuantity > product.quantity) {
-              setError(`${product.name} uchun omborda yetarli mahsulot yo'q. Mavjud: ${product.quantity}`);
+          if (originalItem) {
+            // Yangi va eski miqdorlar farqini hisoblash
+            const oldNetQuantity = originalItem.quantity - (originalItem.returned || 0);
+            const newNetQuantity = item.quantity - (item.returned || 0);
+            const quantityDifference = newNetQuantity - oldNetQuantity;
+            
+            // Agar farq musbat bo'lsa (ko'proq so'ralgan), ombordan yetarliligini tekshirish
+            if (quantityDifference > 0 && quantityDifference > product.quantity) {
+              setError(`${product.name} uchun omborda yetarli mahsulot yo'q. Kerak: ${quantityDifference}, Mavjud: ${product.quantity}`);
               return;
             }
+          }
+        } else {
+          // Yangi buyurtma uchun to'liq miqdorni tekshirish
+          const requestedQuantity = item.quantity - (item.returned || 0);
+          if (requestedQuantity > product.quantity) {
+            setError(`${product.name} uchun omborda yetarli mahsulot yo'q. Kerak: ${requestedQuantity}, Mavjud: ${product.quantity}`);
+            return;
           }
         }
 
@@ -222,7 +233,7 @@ function Orders() {
         customerName: formData.customerName.trim(),
         orderDate: formData.orderDate,
         items: formData.items
-          .filter(item => item.productId) // Filter out items with no product selected
+          .filter(item => item.productId)
           .map(item => {
             const product = products.find(p => p._id === item.productId);
             if (!product) {
@@ -251,7 +262,10 @@ function Orders() {
       let response;
       if (editOrder) {
         // Update existing order
-        response = await ordersAPI.update(editOrder._id, orderData);
+        response = await ordersAPI.update(editOrder._id, {
+          ...orderData,
+          originalOrder: editOrder // Backend uchun eski buyurtma ma'lumotlarini yuborish
+        });
         setOrders(orders.map((order) => (order._id === editOrder._id ? response.data : order)));
         setSnackbarMessage('Buyurtma muvaffaqiyatli yangilandi');
       } else {
@@ -267,7 +281,6 @@ function Orders() {
       handleClose();
     } catch (err) {
       console.error('Buyurtmani saqlashda xatolik:', err);
-      // Try to display specific error message from server if available
       const errorMessage = err.response?.data?.error || err.message || 'Buyurtmani saqlashda xatolik yuz berdi';
       setError(errorMessage);
       setSnackbarMessage(errorMessage);
