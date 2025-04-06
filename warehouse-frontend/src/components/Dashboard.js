@@ -16,9 +16,10 @@ import {
 } from '@mui/material';
 import {
   Menu as MenuIcon,
-  Inventory as InventoryIcon,
+  Warehouse as InventoryIcon,
   ShoppingCart as OrdersIcon,
-  CreditCard as CreditsIcon,
+  Money as CreditsIcon,
+  AdminPanelSettings as SettingsIcon,
   Logout as LogoutIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
@@ -27,6 +28,7 @@ import './Dashboard.css';
 import Inventory from './Inventory';
 import Orders from './Orders';
 import Credits from './Credits';
+import AdminPanel from './AdminPanel';
 
 const drawerWidth = 240;
 
@@ -55,9 +57,10 @@ function Dashboard() {
   };
 
   const menuItems = [
-    { text: 'Inventory', icon: <InventoryIcon />, value: 'inventory' },
-    { text: 'Orders', icon: <OrdersIcon />, value: 'orders' },
-    { text: 'Credits', icon: <CreditsIcon />, value: 'credits' },
+    { text: 'Ombor', icon: <InventoryIcon />, value: 'inventory' },
+    { text: 'Yuklar', icon: <OrdersIcon />, value: 'orders' },
+    { text: 'Nasiya', icon: <CreditsIcon />, value: 'credits' },
+    { text: 'Administrator', icon: <SettingsIcon />, value: 'admin' },
   ];
 
   const drawer = (
@@ -180,7 +183,7 @@ function Dashboard() {
               letterSpacing: '0.5px'
             }}
           >
-            Warehouse Management System
+            Ombor Boshqaruv Tizimi
           </Typography>
           <Button
             color="inherit"
@@ -199,7 +202,7 @@ function Dashboard() {
               },
             }}
           >
-            LOGOUT
+            CHIQISH
           </Button>
         </Toolbar>
       </AppBar>
@@ -219,6 +222,13 @@ function Dashboard() {
             '& .MuiDrawer-paper': {
               boxSizing: 'border-box',
               width: drawerWidth,
+              border: 'none',
+              boxShadow: '0 0 15px rgba(0,0,0,0.2)',
+              '& .MuiList-root': {
+                '& .MuiListItem-root': {
+                  py: 1.5
+                }
+              }
             },
           }}
         >
@@ -231,6 +241,8 @@ function Dashboard() {
             '& .MuiDrawer-paper': {
               boxSizing: 'border-box',
               width: drawerWidth,
+              border: 'none',
+              boxShadow: '0 0 15px rgba(0,0,0,0.2)'
             },
           }}
           open
@@ -242,15 +254,23 @@ function Dashboard() {
         component="main"
         sx={{
           flexGrow: 1,
-          p: 3,
+          p: { xs: 0.5, sm: 1, md: 2 },
           width: { sm: `calc(100% - ${drawerWidth}px)` },
+          backgroundColor: '#f4f3ff',
+          minHeight: '100vh'
         }}
       >
         <Toolbar />
-        <Container maxWidth="lg">
+        <Container 
+          maxWidth="lg"
+          sx={{
+            px: { xs: 0.5, sm: 1 }
+          }}
+        >
           {selectedMenu === 'inventory' && <InventoryContent />}
           {selectedMenu === 'orders' && <OrdersContent />}
           {selectedMenu === 'credits' && <CreditsContent />}
+          {selectedMenu === 'admin' && <AdminPanelContent />}
         </Container>
       </Box>
     </Box>
@@ -261,5 +281,6 @@ function Dashboard() {
 const InventoryContent = () => <Inventory />;
 const OrdersContent = () => <Orders />;
 const CreditsContent = () => <Credits />;
+const AdminPanelContent = () => <AdminPanel />;
 
 export default Dashboard; 

@@ -68,8 +68,8 @@ function Inventory() {
       setProducts(response.data);
       setError(null);
     } catch (err) {
-      setError('Failed to fetch products. Please try again.');
-      showAlert('Failed to fetch products. Please try again.', 'error');
+      setError('Mahsulotlarni yuklashda xatolik yuz berdi. Iltimos, qayta urinib ko\'ring.');
+      showAlert('Mahsulotlarni yuklashda xatolik yuz berdi. Iltimos, qayta urinib ko\'ring.', 'error');
     } finally {
       setLoading(false);
     }
@@ -154,26 +154,40 @@ function Inventory() {
           
           const response = await productsAPI.update(editProductId, updatedProduct);
           setProducts(products.map(p => (p._id === editProductId ? response.data : p)));
-          showAlert('Product quantity updated successfully.');
+          showAlert('Mahsulot miqdori muvaffaqiyatli yangilandi.');
         } else {
           // Update product
           const response = await productsAPI.update(editProductId, formData);
           setProducts(products.map(p => (p._id === editProductId ? response.data : p)));
-          showAlert('Product updated successfully.');
+          showAlert('Mahsulot muvaffaqiyatli yangilandi.');
         }
       } else {
         // Create product
         const response = await productsAPI.create(formData);
         setProducts([response.data, ...products]);
-        showAlert('Product added successfully.');
+        showAlert('Mahsulot muvaffaqiyatli qo\'shildi.');
       }
       handleClose();
     } catch (err) {
       showAlert(
-        err.response?.data?.error || 'Failed to save product. Please try again.',
+        err.response?.data?.error || 'Mahsulotni saqlashda xatolik yuz berdi. Iltimos, qayta urinib ko\'ring.',
         'error'
       );
     }
+  };
+
+  // Open delete confirmation dialog
+  const handleDeleteClick = (product) => {
+    setProductToDelete(product);
+    setEditProductId(product._id);
+    setDeleteDialogOpen(true);
+  };
+
+  // Close delete dialog
+  const handleDeleteCancel = () => {
+    setDeleteDialogOpen(false);
+    setProductToDelete(null);
+    setEditProductId(null);
   };
 
   // Delete product
@@ -181,19 +195,19 @@ function Inventory() {
     try {
       if (!editProductId) return;
       
-      if (window.confirm('Are you sure you want to delete this product?')) {
-        await productsAPI.delete(editProductId);
-        setProducts(products.filter(p => p._id !== editProductId));
-        showAlert('Product deleted successfully.');
-        handleClose();
-      }
+      await productsAPI.delete(editProductId);
+      setProducts(products.filter(p => p._id !== editProductId));
+      showAlert('Mahsulot muvaffaqiyatli o\'chirildi.');
+      setDeleteDialogOpen(false);
+      setProductToDelete(null);
+      setEditProductId(null);
     } catch (err) {
-      showAlert('Failed to delete product. Please try again.', 'error');
+      showAlert('Mahsulotni o\'chirishda xatolik yuz berdi. Iltimos, qayta urinib ko\'ring.', 'error');
     }
   };
 
   return (
-    <div style={{ padding: '32px', backgroundColor: '#f4f3ff', minHeight: '100vh' }}>
+    <div style={{ padding: { xs: '16px', sm: '24px', md: '32px' } }}>
       <Box sx={{ 
         backgroundColor: 'white', 
         borderRadius: '16px',
@@ -201,11 +215,13 @@ function Inventory() {
         overflow: 'hidden'
       }}>
         <Box sx={{ 
-          p: 3, 
+          p: { xs: 2, sm: 3 }, 
           borderBottom: '1px solid rgba(124, 58, 237, 0.2)',
           display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
           alignItems: 'center',
           justifyContent: 'space-between',
+          gap: { xs: 2, sm: 0 },
           background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)',
           borderTopLeftRadius: '16px',
           borderTopRightRadius: '16px'
@@ -218,7 +234,7 @@ function Inventory() {
               fontSize: '1.5rem'
             }}
           >
-            Inventory Management
+            Ombor Boshqaruvi
           </Typography>
           <Button
             variant="contained"
@@ -249,7 +265,7 @@ function Inventory() {
               }
             }}
           >
-            Add Item
+            Mahsulot Qo'shish
           </Button>
         </Box>
 
@@ -283,7 +299,7 @@ function Inventory() {
                       backgroundColor: '#f7fafc',
                       borderBottom: '2px solid #edf2f7'
                     }}>
-                      Name
+                      Nomi
                     </TableCell>
                     <TableCell sx={{ 
                       fontWeight: 600, 
@@ -291,7 +307,7 @@ function Inventory() {
                       backgroundColor: '#f7fafc',
                       borderBottom: '2px solid #edf2f7'
                     }}>
-                      Description
+                      Tavsif
                     </TableCell>
                     <TableCell sx={{ 
                       fontWeight: 600, 
@@ -299,7 +315,7 @@ function Inventory() {
                       backgroundColor: '#f7fafc',
                       borderBottom: '2px solid #edf2f7'
                     }}>
-                      Category
+                      Kategoriya
                     </TableCell>
                     <TableCell sx={{ 
                       fontWeight: 600, 
@@ -307,7 +323,7 @@ function Inventory() {
                       backgroundColor: '#f7fafc',
                       borderBottom: '2px solid #edf2f7'
                     }}>
-                      Quantity
+                      Miqdori
                     </TableCell>
                     <TableCell sx={{ 
                       fontWeight: 600, 
@@ -315,7 +331,7 @@ function Inventory() {
                       backgroundColor: '#f7fafc',
                       borderBottom: '2px solid #edf2f7'
                     }}>
-                      Price
+                      Narxi
                     </TableCell>
                     <TableCell sx={{ 
                       fontWeight: 600, 
@@ -324,7 +340,7 @@ function Inventory() {
                       borderBottom: '2px solid #edf2f7',
                       width: '100px'
                     }}>
-                      Actions
+                      Amallar
                     </TableCell>
                   </TableRow>
                 </TableHead>
@@ -387,48 +403,32 @@ function Inventory() {
                       <TableCell sx={{ 
                         borderBottom: '1px solid #e9ecef'
                       }}>
-                        <Box sx={{ 
-                          display: 'flex', 
-                          flexDirection: 'column',
-                          gap: 1,
-                          alignItems: 'center'
-                        }}>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
                           <IconButton
-                            size="small"
                             onClick={() => handleEdit(product)}
+                            size="small"
                             sx={{ 
-                              color: 'white',
-                              background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)',
-                              '&:hover': { 
-                                background: 'linear-gradient(135deg, #6d28d9 0%, #5b21b6 100%)'
-                              },
-                              padding: '8px',
-                              width: '34px',
-                              height: '34px',
-                              boxShadow: '0 2px 8px rgba(124, 58, 237, 0.2)',
-                              transition: 'all 0.2s ease'
+                              color: '#3b82f6',
+                              backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                              '&:hover': { backgroundColor: 'rgba(59, 130, 246, 0.2)' },
+                              width: '36px',
+                              height: '36px'
                             }}
                           >
                             <EditIcon fontSize="small" />
                           </IconButton>
                           <IconButton
+                            onClick={() => handleDeleteClick(product)}
                             size="small"
-                            onClick={() => handleAddQuantity(product)}
                             sx={{ 
-                              color: 'white',
-                              background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)',
-                              opacity: 0.9,
-                              '&:hover': { 
-                                background: 'linear-gradient(135deg, #6d28d9 0%, #5b21b6 100%)'
-                              },
-                              padding: '8px',
-                              width: '34px',
-                              height: '34px',
-                              boxShadow: '0 2px 8px rgba(124, 58, 237, 0.2)',
-                              transition: 'all 0.2s ease'
+                              color: '#ef4444',
+                              backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                              '&:hover': { backgroundColor: 'rgba(239, 68, 68, 0.2)' },
+                              width: '36px',
+                              height: '36px'
                             }}
                           >
-                            <AddIcon fontSize="small" />
+                            <DeleteIcon fontSize="small" />
                           </IconButton>
                         </Box>
                       </TableCell>
@@ -460,13 +460,13 @@ function Inventory() {
           color: 'white'
         }}>
           <Typography variant="h6" sx={{ fontWeight: 600 }}>
-            {editProductId ? (formData.addQuantity !== undefined ? 'Add Quantity' : 'Edit Product') : 'Add New Product'}
+            {editProductId ? (formData.addQuantity !== undefined ? 'Miqdor Qo\'shish' : 'Mahsulotni Tahrirlash') : 'Yangi Mahsulot Qo\'shish'}
           </Typography>
         </DialogTitle>
         <DialogContent sx={{ p: 3 }}>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, mt: 1 }}>
             <TextField
-              label="Name"
+              label="Nomi"
               name="name"
               value={formData.name}
               onChange={handleChange}
@@ -480,7 +480,7 @@ function Inventory() {
               }}
             />
             <TextField
-              label="Description"
+              label="Tavsif"
               name="description"
               value={formData.description}
               onChange={handleChange}
@@ -495,7 +495,7 @@ function Inventory() {
               }}
             />
             <TextField
-              label="Category"
+              label="Kategoriya"
               name="category"
               value={formData.category}
               onChange={handleChange}
@@ -509,7 +509,7 @@ function Inventory() {
             />
             {formData.addQuantity !== undefined ? (
               <TextField
-                label="Add Quantity"
+                label="Miqdor Qo'shish"
                 name="addQuantity"
                 type="number"
                 value={formData.addQuantity}
@@ -524,7 +524,7 @@ function Inventory() {
               />
             ) : (
               <TextField
-                label="Quantity"
+                label="Miqdori"
                 name="quantity"
                 type="number"
                 value={formData.quantity}
@@ -539,7 +539,7 @@ function Inventory() {
               />
             )}
             <TextField
-              label="Price (UZS)"
+              label="Narxi (UZS)"
               name="price"
               type="number"
               value={formData.price}
@@ -563,17 +563,21 @@ function Inventory() {
           <Button 
             onClick={handleClose} 
             sx={{ 
-              color: '#4a5568',
+              color: 'white',
+              backgroundColor: '#7c3aed',
               '&:hover': {
-                backgroundColor: '#f7fafc'
+                backgroundColor: '#6d28d9'
               }
             }}
           >
-            Cancel
+            BEKOR QILISH
           </Button>
           {editProductId && formData.addQuantity === undefined && (
             <Button 
-              onClick={handleDelete}
+              onClick={() => {
+                handleDeleteClick(formData);
+                handleClose();
+              }}
               sx={{ 
                 backgroundColor: '#fed7d7',
                 color: '#e53e3e',
@@ -582,7 +586,7 @@ function Inventory() {
                 }
               }}
             >
-              Delete
+              O'CHIRISH
             </Button>
           )}
           <Button
@@ -596,7 +600,87 @@ function Inventory() {
               boxShadow: 'none'
             }}
           >
-            {editProductId ? (formData.addQuantity !== undefined ? 'Add' : 'Update') : 'Save'}
+            {editProductId ? (formData.addQuantity !== undefined ? 'QO\'SHISH' : 'YANGILASH') : 'SAQLASH'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={handleDeleteCancel}
+        PaperProps={{
+          sx: { 
+            borderRadius: '12px',
+            maxWidth: '500px',
+            width: '100%'
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          backgroundColor: '#ef4444',
+          color: 'white',
+          textAlign: 'center',
+          py: 2
+        }}>
+          Mahsulotni O'chirish
+        </DialogTitle>
+        <DialogContent sx={{ pt: 3, pb: 3 }}>
+          <Typography sx={{ fontWeight: 400, fontSize: '16px', textAlign: 'center', mb: 2 }}>
+            Siz aniq bu mahsulotni o'chirmoqchimisiz?
+          </Typography>
+          
+          {productToDelete && (
+            <Box sx={{ 
+              backgroundColor: 'rgba(254, 226, 226, 0.5)', 
+              p: 2, 
+              borderRadius: '8px',
+              border: '1px solid rgba(239, 68, 68, 0.2)',
+              mb: 2
+            }}>
+              <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#1a1a1a' }}>
+                Mahsulot ma'lumotlari:
+              </Typography>
+              <Typography sx={{ fontSize: '14px' }}>
+                Nomi: {productToDelete.name}
+              </Typography>
+              <Typography sx={{ fontSize: '14px' }}>
+                Miqdori: {productToDelete.quantity}
+              </Typography>
+              <Typography sx={{ fontSize: '14px' }}>
+                Narxi: {formatPrice(productToDelete.price)}
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2, gap: 1, justifyContent: 'center' }}>
+          <Button 
+            onClick={handleDeleteCancel}
+            variant="contained"
+            sx={{ 
+              textTransform: 'uppercase',
+              color: 'white', 
+              backgroundColor: '#7c3aed', 
+              '&:hover': { backgroundColor: '#6d28d9' },
+              px: 4
+            }}
+          >
+            BEKOR QILISH
+          </Button>
+          <Button
+            onClick={handleDelete}
+            variant="contained"
+            sx={{
+              textTransform: 'uppercase',
+              backgroundColor: '#ef4444',
+              color: 'white',
+              '&:hover': {
+                backgroundColor: '#dc2626'
+              },
+              px: 4
+            }}
+          >
+            O'CHIRISH
           </Button>
         </DialogActions>
       </Dialog>

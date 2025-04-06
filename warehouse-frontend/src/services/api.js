@@ -28,6 +28,9 @@ export const authAPI = {
   register: (userData) => api.post('/auth/register', userData),
   getCurrentUser: () => api.get('/auth/me'),
   logout: () => api.post('/auth/logout'),
+  changePassword: (data) => api.post('/auth/change-password', data),
+  getAdmins: () => api.get('/auth/admins'),
+  deleteUser: (id) => api.delete(`/auth/users/${id}`),
 };
 
 // Products API

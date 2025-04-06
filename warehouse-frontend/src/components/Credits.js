@@ -48,6 +48,20 @@ const formatPrice = (price) => {
   }).format(price);
 };
 
+// Get color for status
+const getStatusColor = (status) => {
+  switch (status?.toLowerCase()) {
+    case 'active':
+      return '#f59e0b'; // amber-500
+    case 'paid':
+      return '#10b981'; // emerald-500
+    case 'overdue':
+      return '#ef4444'; // red-500
+    default:
+      return '#6b7280'; // gray-500
+  }
+};
+
 // Status display component
 const StatusChip = ({ status }) => {
   let color = 'default';
@@ -365,220 +379,177 @@ function Credits() {
   };
 
   return (
-    <div style={{ padding: '24px' }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" sx={{ fontWeight: 500 }}>
-          Credit Management
+    <Box sx={{ 
+      height: '100%',
+      p: 3
+    }}>
+      <Box 
+        sx={{ 
+          backgroundColor: '#7c3aed',
+          borderRadius: '16px',
+          p: 3,
+          mb: 3,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}
+      >
+        <Typography 
+          variant="h5" 
+          sx={{ 
+            fontWeight: 600,
+            color: 'white'
+          }}
+        >
+          Kredit
+          Boshqaruvi
         </Typography>
         <Button
           variant="contained"
           startIcon={<AddIcon />}
           onClick={handleAdd}
           sx={{
-            backgroundColor: '#1976d2',
+            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            color: 'white',
             '&:hover': {
-              backgroundColor: '#1565c0'
+              backgroundColor: 'rgba(255, 255, 255, 0.2)',
             },
-            textTransform: 'none',
-            boxShadow: 'none',
-            borderRadius: '8px',
-            padding: '8px 16px',
+            px: 3,
+            py: 1
           }}
         >
-          New Credit
+          Yangi Kredit
         </Button>
       </Box>
 
-      {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-          <CircularProgress />
-        </Box>
-      ) : error ? (
-        <Box sx={{ mt: 2 }}>
-          <Alert severity="error">{error}</Alert>
-        </Box>
-      ) : (
-        <TableContainer 
-          component={Paper} 
-          sx={{ 
-            boxShadow: 'none',
-            border: '1px solid #e0e0e0',
-            borderRadius: '8px',
-            overflow: 'hidden',
-            width: '100%'
-          }}
-        >
-          <Table sx={{ width: '100%', tableLayout: 'fixed' }}>
-            <TableHead>
-              <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
-                <TableCell sx={{ fontWeight: 600, color: '#424242', width: '8%' }}>Credit #</TableCell>
-                <TableCell sx={{ fontWeight: 600, color: '#424242', width: '32%' }}>Customer</TableCell>
-                <TableCell sx={{ fontWeight: 600, color: '#424242', width: '12%' }}>Date</TableCell>
-                <TableCell sx={{ fontWeight: 600, color: '#424242', width: '15%' }}>Amount</TableCell>
-                <TableCell sx={{ fontWeight: 600, color: '#424242', width: '15%' }}>Remaining</TableCell>
-                <TableCell sx={{ fontWeight: 600, color: '#424242', width: '8%' }}>Status</TableCell>
-                <TableCell sx={{ fontWeight: 600, color: '#424242', width: '10%' }}>Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {credits.map((credit) => (
-                <TableRow 
-                  key={credit._id}
-                  sx={{ 
-                    '&:hover': { 
-                      backgroundColor: '#f8f9fa' 
-                    },
-                    height: '60px'
-                  }}
-                >
-                  <TableCell sx={{ color: '#1976d2', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {credit.creditNumber}
-                  </TableCell>
-                  <TableCell sx={{ maxWidth: 0 }}>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                      <Typography 
-                        variant="body2" 
-                        sx={{ 
-                          fontWeight: 500,
-                          whiteSpace: 'nowrap'
-                        }}
-                      >
-                        {credit.customerName}
-                      </Typography>
-                      <Box sx={{ 
-                        display: 'flex', 
-                        alignItems: 'center',
-                        gap: 0.5,
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis'
-                      }}>
-                        {credit.phoneNumber && (
-                          <Typography 
-                            variant="caption" 
-                            sx={{ 
-                              color: '#666',
-                              display: 'inline'
-                            }}
-                          >
-                            {credit.phoneNumber}
-                          </Typography>
-                        )}
-                        <Typography 
-                          variant="caption" 
-                          sx={{ 
-                            color: '#666',
-                            display: 'inline',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis'
-                          }}
-                        >
-                          • {credit.items.map(item => `${item.name} (${item.quantity})`).join(', ')}
+      <Paper 
+        elevation={0}
+        sx={{ 
+          p: 3,
+          borderRadius: '12px',
+          backgroundColor: 'white',
+          border: '1px solid rgba(124, 58, 237, 0.1)',
+          minHeight: '200px'
+        }}
+      >
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px' }}>
+            <CircularProgress sx={{ color: '#7c3aed' }} />
+          </Box>
+        ) : error ? (
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center', 
+            height: '200px',
+            color: '#ef4444'
+          }}>
+            <Typography color="error">{error}</Typography>
+          </Box>
+        ) : credits.length === 0 ? (
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center', 
+            height: '200px',
+            color: '#6b7280'
+          }}>
+            <Typography>Kreditlar mavjud emas</Typography>
+          </Box>
+        ) : (
+          <TableContainer>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 600 }}>Kredit #</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Mijoz</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Sana</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Mahsulotlar</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Umumiy Summa</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Qolgan Summa</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Amallar</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {credits.map((credit) => (
+                  <TableRow key={credit._id}>
+                    <TableCell>{credit.creditNumber}</TableCell>
+                    <TableCell>
+                      <Box>
+                        <Typography variant="body2">{credit.customerName}</Typography>
+                        <Typography variant="caption" color="textSecondary">
+                          {credit.phoneNumber}
                         </Typography>
                       </Box>
-                    </Box>
-                  </TableCell>
-                  <TableCell sx={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    <Typography variant="body2" sx={{ color: '#666' }}>
-                      {formatDate(credit.creditDate)}
-                    </Typography>
-                  </TableCell>
-                  <TableCell sx={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                      {formatPrice(credit.totalAmount)}
-                    </Typography>
-                  </TableCell>
-                  <TableCell sx={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    <Typography 
-                      variant="body2" 
-                      sx={{ 
-                        color: credit.remainingAmount > 0 ? '#d32f2f' : '#2e7d32',
-                        fontWeight: credit.remainingAmount > 0 ? 500 : 400,
-                        fontSize: '0.875rem'
-                      }}
-                    >
-                      {formatPrice(credit.remainingAmount)}
-                    </Typography>
-                  </TableCell>
-                  <TableCell sx={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    <Chip 
-                      size="small" 
-                      label={credit.status} 
-                      sx={{
-                        backgroundColor: credit.status === 'Active' ? '#fff3e0' : 
-                                       credit.status === 'Paid' ? '#e8f5e9' : '#ffebee',
-                        color: credit.status === 'Active' ? '#e65100' : 
-                               credit.status === 'Paid' ? '#1b5e20' : '#c62828',
-                        fontWeight: 500,
-                        fontSize: '0.75rem',
-                        height: '24px'
-                      }}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Box sx={{ 
-                      display: 'flex', 
-                      flexDirection: 'column',
-                      gap: 0.5,
-                      alignItems: 'center'
-                    }}>
-                      <IconButton
-                        size="small"
-                        onClick={() => handleEdit(credit)}
-                        sx={{ 
-                          color: '#2196f3',
-                          padding: '4px',
-                          '&:hover': {
-                            backgroundColor: '#e3f2fd'
-                          }
+                    </TableCell>
+                    <TableCell>{formatDate(credit.creditDate)}</TableCell>
+                    <TableCell>
+                      {credit.items.map((item, index) => (
+                        <Typography key={index} variant="caption" display="block">
+                          {item.name} ({item.quantity} ta)
+                        </Typography>
+                      ))}
+                    </TableCell>
+                    <TableCell>{formatPrice(credit.totalAmount)}</TableCell>
+                    <TableCell>{formatPrice(credit.remainingAmount)}</TableCell>
+                    <TableCell>
+                      <Box
+                        sx={{
+                          display: 'inline-block',
+                          px: 2,
+                          py: 0.5,
+                          borderRadius: '16px',
+                          backgroundColor: `${getStatusColor(credit.status)}20`,
+                          color: getStatusColor(credit.status)
                         }}
                       >
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        onClick={() => handleOpenPaymentDialog(credit)}
-                        sx={{ 
-                          color: '#4caf50',
-                          padding: '4px',
-                          '&:hover': {
-                            backgroundColor: '#e8f5e9'
-                          }
-                        }}
-                        disabled={credit.status === 'Paid'}
-                      >
-                        <PaymentIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        onClick={() => handleDeleteClick(credit)}
-                        sx={{ 
-                          color: '#f44336',
-                          padding: '4px',
-                          '&:hover': {
-                            backgroundColor: '#ffebee'
-                          }
-                        }}
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </Box>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {credits.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 3 }}>
-                    <Typography variant="body1" sx={{ color: '#666' }}>
-                      No credit records found. Click "New Credit" to add your first record.
-                    </Typography>
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
+                        {credit.status}
+                      </Box>
+                    </TableCell>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleEdit(credit)}
+                          sx={{ 
+                            color: '#7c3aed',
+                            '&:hover': { backgroundColor: '#f3f4f6' }
+                          }}
+                        >
+                          <EditIcon />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleOpenPaymentDialog(credit)}
+                          sx={{ 
+                            color: '#7c3aed',
+                            '&:hover': { backgroundColor: '#f3f4f6' }
+                          }}
+                        >
+                          <PaymentIcon />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleDeleteClick(credit)}
+                          sx={{ 
+                            color: '#ef4444',
+                            '&:hover': { backgroundColor: '#fee2e2' }
+                          }}
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+      </Paper>
 
       {/* Credit Details Dialog */}
       <Dialog
@@ -588,16 +559,16 @@ function Credits() {
         fullWidth
       >
         <DialogTitle>
-          {selectedCredit ? 'Edit Credit Record' : 'New Credit Record'}
+          {selectedCredit ? 'Nasiyani tahrirlash' : 'Yangi nasiya qo\'shish'}
         </DialogTitle>
         <DialogContent>
           <Box sx={{ mb: 3, mt: 1 }}>
             <Typography variant="subtitle2" sx={{ mb: 2, color: '#1976d2' }}>
-              Customer Information
+              Mijoz Ma'lumotlari
             </Typography>
             <Box sx={{ display: 'flex', gap: 2 }}>
               <TextField
-                label="Customer Name"
+                label="Mijoz ismi"
                 name="customerName"
                 value={formData.customerName}
                 onChange={handleChange}
@@ -606,7 +577,7 @@ function Credits() {
                 sx={{ mb: 2 }}
               />
               <TextField
-                label="Phone Number"
+                label="Telefon raqami"
                 name="phoneNumber"
                 value={formData.phoneNumber}
                 onChange={handleChange}
@@ -616,7 +587,7 @@ function Credits() {
             </Box>
             <Box sx={{ display: 'flex', gap: 2 }}>
               <TextField
-                label="Credit Date"
+                label="Sana"
                 name="creditDate"
                 type="date"
                 value={formData.creditDate}
@@ -634,7 +605,7 @@ function Credits() {
           <Divider sx={{ mb: 3 }} />
           
           <Typography variant="subtitle2" sx={{ mb: 2, color: '#1976d2' }}>
-            Credit Items
+            Nasiya mahsulotlari
           </Typography>
           
           {formData.items.map((item, index) => (
@@ -657,11 +628,11 @@ function Credits() {
                 }}
               >
                 <FormControl size="small" required>
-                  <InputLabel>Product Name</InputLabel>
+                  <InputLabel>Mahsulot nomi</InputLabel>
                   <Select
                     value={item.name}
                     onChange={(e) => handleItemChange(index, 'name', e.target.value)}
-                    label="Product Name"
+                    label="Mahsulot nomi"
                   >
                     {products
                       .filter(product => product.quantity > 0) // Only show products with available quantity
@@ -670,14 +641,14 @@ function Credits() {
                           key={product._id} 
                           value={product.name}
                         >
-                          {product.name} ({product.quantity} available)
+                          {product.name} ({product.quantity} ta mavjud)
                         </MenuItem>
                       ))
                     }
                   </Select>
                 </FormControl>
                 <TextField
-                  label="Quantity"
+                  label="Miqdori"
                   type="number"
                   value={item.quantity}
                   onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
@@ -689,7 +660,7 @@ function Credits() {
                   }}
                 />
                 <TextField
-                  label="Price (UZS)"
+                  label="Narxi (so'm)"
                   type="number"
                   value={item.price}
                   onChange={(e) => handleItemChange(index, 'price', e.target.value)}
@@ -701,9 +672,13 @@ function Credits() {
                   <IconButton 
                     onClick={() => handleRemoveItem(index)}
                     sx={{ 
-                      color: '#f44336',
+                      color: 'white',
+                      backgroundColor: '#ef4444',
                       width: '40px',
-                      height: '40px'
+                      height: '40px',
+                      '&:hover': {
+                        backgroundColor: '#dc2626'
+                      }
                     }}
                   >
                     <DeleteIcon fontSize="small" />
@@ -718,34 +693,37 @@ function Credits() {
                 borderTop: '1px solid #f0f0f0'
               }}>
                 <Typography variant="body2" sx={{ color: '#666' }}>
-                  Item Total: {formatPrice(parseInt(item.quantity) * parseInt(item.price) || 0)}
+                  Jami: {formatPrice(parseInt(item.quantity) * parseInt(item.price) || 0)}
                 </Typography>
               </Box>
             </Box>
           ))}
           
           <Button
-            variant="outlined"
+            variant="contained"
             onClick={handleAddItem}
             startIcon={<AddIcon />}
             sx={{ 
               mt: 1,
               mb: 3,
-              borderColor: '#1976d2',
-              color: '#1976d2'
+              backgroundColor: '#1976d2',
+              color: 'white',
+              '&:hover': {
+                backgroundColor: '#1565c0'
+              }
             }}
           >
-            Add Item
+            Mahsulot qo'shish
           </Button>
 
           <Divider sx={{ mb: 3 }} />
           
           <Box sx={{ mb: 3 }}>
             <Typography variant="subtitle2" sx={{ mb: 2, color: '#1976d2' }}>
-              Payment Information
+              To'lov ma'lumotlari
             </Typography>
             <TextField
-              label="Initial Payment (UZS)"
+              label="Boshlang'ich to'lov (so'm)"
               name="paidAmount"
               type="number"
               value={formData.paidAmount}
@@ -755,7 +733,7 @@ function Credits() {
               sx={{ mb: 2 }}
             />
             <TextField
-              label="Notes"
+              label="Izohlar"
               name="notes"
               value={formData.notes}
               onChange={handleChange}
@@ -773,11 +751,11 @@ function Credits() {
             border: '1px solid #e0e0e0'
           }}>
             <Typography variant="subtitle2" sx={{ mb: 1, color: '#1976d2' }}>
-              Credit Summary
+              Nasiya xulasasi
             </Typography>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
               <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                Total Amount:
+                Umumiy summa:
               </Typography>
               <Typography variant="body2">
                 {formatPrice(calculateTotal())}
@@ -785,7 +763,7 @@ function Credits() {
             </Box>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
               <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                Initial Payment:
+                Boshlang'ich to'lov:
               </Typography>
               <Typography variant="body2">
                 {formatPrice(parseInt(formData.paidAmount) || 0)}
@@ -793,7 +771,7 @@ function Credits() {
             </Box>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 1, borderTop: '1px solid #e0e0e0' }}>
               <Typography variant="subtitle2">
-                Remaining Amount:
+                Qolgan summa:
               </Typography>
               <Typography variant="subtitle2" sx={{ color: calculateRemaining() > 0 ? '#f44336' : '#4caf50' }}>
                 {formatPrice(calculateRemaining())}
@@ -802,8 +780,14 @@ function Credits() {
           </Box>
         </DialogContent>
         <DialogActions sx={{ padding: '16px 24px' }}>
-          <Button onClick={handleClose} sx={{ color: '#666' }}>
-            Cancel
+          <Button onClick={handleClose} sx={{ 
+            color: 'white',
+            backgroundColor: '#6b7280',
+            '&:hover': {
+              backgroundColor: '#4b5563'
+            }
+          }}>
+            Bekor qilish
           </Button>
           <Button 
             onClick={handleSubmit}
@@ -816,7 +800,7 @@ function Credits() {
               }
             }}
           >
-            {selectedCredit ? 'Update' : 'Create'}
+            {selectedCredit ? 'Saqlash' : 'Yaratish'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -828,23 +812,23 @@ function Credits() {
         maxWidth="sm"
         fullWidth
       >
-        <DialogTitle>Add Payment</DialogTitle>
+        <DialogTitle>To'lov qo'shish</DialogTitle>
         <DialogContent>
           {selectedCredit && (
             <>
               <Box sx={{ mb: 3, mt: 1 }}>
                 <Typography variant="subtitle2" sx={{ color: '#666', mb: 1 }}>
-                  Credit Information
+                  Nasiya ma'lumotlari
                 </Typography>
                 <Typography variant="body1" sx={{ fontWeight: 500 }}>
                   {selectedCredit.customerName} - #{selectedCredit.creditNumber}
                 </Typography>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
                   <Typography variant="body2">
-                    Total Amount: {formatPrice(selectedCredit.totalAmount)}
+                    Umumiy summa: {formatPrice(selectedCredit.totalAmount)}
                   </Typography>
                   <Typography variant="body2">
-                    Remaining: {formatPrice(selectedCredit.remainingAmount)}
+                    Qolgan summa: {formatPrice(selectedCredit.remainingAmount)}
                   </Typography>
                 </Box>
               </Box>
@@ -852,11 +836,11 @@ function Credits() {
               <Divider sx={{ mb: 3 }} />
               
               <Typography variant="subtitle2" sx={{ mb: 2, color: '#1976d2' }}>
-                Payment Details
+                To'lov tafsilotlari
               </Typography>
               
               <TextField
-                label="Payment Amount (UZS)"
+                label="To'lov miqdori (so'm)"
                 name="amount"
                 type="number"
                 value={paymentData.amount}
@@ -868,7 +852,7 @@ function Credits() {
               />
               
               <TextField
-                label="Payment Date"
+                label="To'lov sanasi"
                 name="paymentDate"
                 type="date"
                 value={paymentData.paymentDate}
@@ -881,7 +865,7 @@ function Credits() {
               />
               
               <TextField
-                label="Notes"
+                label="Izohlar"
                 name="notes"
                 value={paymentData.notes}
                 onChange={handlePaymentChange}
@@ -893,16 +877,32 @@ function Credits() {
           )}
         </DialogContent>
         <DialogActions sx={{ padding: '16px 24px' }}>
-          <Button onClick={handleClosePaymentDialog} sx={{ color: '#666' }}>
-            Cancel
+          <Button onClick={handleClosePaymentDialog} sx={{ 
+            color: 'white',
+            backgroundColor: '#6b7280',
+            '&:hover': {
+              backgroundColor: '#4b5563'
+            }
+          }}>
+            Bekor qilish
           </Button>
           <Button 
             onClick={handleSubmitPayment}
             variant="contained"
             color="success"
             disabled={!paymentData.amount || paymentData.amount <= 0}
+            sx={{
+              color: 'white',
+              '&.Mui-disabled': {
+                color: 'white',
+                opacity: 0.7
+              },
+              '&:hover': {
+                backgroundColor: '#10b981'
+              }
+            }}
           >
-            Add Payment
+            To'lovni qo'shish
           </Button>
         </DialogActions>
       </Dialog>
@@ -914,15 +914,21 @@ function Credits() {
         maxWidth="xs"
         fullWidth
       >
-        <DialogTitle>Confirm Deletion</DialogTitle>
+        <DialogTitle>O'chirishni tasdiqlang</DialogTitle>
         <DialogContent>
           <Typography>
-            Are you sure you want to delete credit record #{creditToDelete?.creditNumber}? This action cannot be undone.
+            Haqiqatan ham #{creditToDelete?.creditNumber} raqamli nasiyani o'chirishni xohlaysizmi? Bu amalni qaytarib bo'lmaydi.
           </Typography>
         </DialogContent>
         <DialogActions sx={{ padding: '0 24px 20px 24px' }}>
-          <Button onClick={handleDeleteCancel} sx={{ color: '#666' }}>
-            Cancel
+          <Button onClick={handleDeleteCancel} sx={{ 
+            color: 'white',
+            backgroundColor: '#6b7280',
+            '&:hover': {
+              backgroundColor: '#4b5563'
+            }
+          }}>
+            Bekor qilish
           </Button>
           <Button 
             onClick={handleDeleteConfirm} 
@@ -930,7 +936,7 @@ function Credits() {
             color="error"
             sx={{ textTransform: 'none' }}
           >
-            Delete
+            O'chirish
           </Button>
         </DialogActions>
       </Dialog>
@@ -946,7 +952,7 @@ function Credits() {
           {alertMessage}
         </Alert>
       </Snackbar>
-    </div>
+    </Box>
   );
 }
 

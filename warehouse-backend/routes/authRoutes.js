@@ -1,11 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
-const { protect } = require('../middleware/authMiddleware');
+const auth = require('../middleware/auth');
 
-// Routes prefixed with /api/auth
+// Public routes
 router.post('/register', authController.register);
 router.post('/login', authController.login);
-router.get('/me', protect, authController.getCurrentUser);
+
+// Protected routes
+router.get('/me', auth, authController.getCurrentUser);
+router.post('/change-password', auth, authController.changePassword);
+router.get('/admins', auth, authController.getAdmins);
+router.delete('/users/:id', auth, authController.deleteUser);
 
 module.exports = router;

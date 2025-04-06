@@ -86,8 +86,8 @@ function Orders() {
         setOrders(ordersRes.data);
         setProducts(productsRes.data);
       } catch (err) {
-        setError('Failed to fetch data');
-        console.error('Error fetching data:', err);
+        setError('Ma\'lumotlarni yuklashda xatolik yuz berdi');
+        console.error('Ma\'lumotlarni yuklashda xatolik:', err);
       } finally {
         setLoading(false);
       }
@@ -140,14 +140,14 @@ function Orders() {
       setOrderToDelete(null);
       // Show success message
       setError('');
-      setSnackbarMessage('Order deleted successfully');
+      setSnackbarMessage('Buyurtma muvaffaqiyatli o\'chirildi');
       setSnackbarSeverity('success');
       setSnackbarOpen(true);
     } catch (err) {
-      setError('Failed to delete order');
-      console.error('Error deleting order:', err);
+      setError('Buyurtmani o\'chirishda xatolik');
+      console.error('Buyurtmani o\'chirishda xatolik:', err);
       // Show error message
-      setSnackbarMessage('Failed to delete order');
+      setSnackbarMessage('Buyurtmani o\'chirishda xatolik');
       setSnackbarSeverity('error');
       setSnackbarOpen(true);
     }
@@ -162,12 +162,12 @@ function Orders() {
     try {
       // Validate required fields
       if (!formData.customerName.trim()) {
-        setError('Customer name is required');
+        setError('Mijoz ismi kiritilishi shart');
         return;
       }
 
       if (!formData.items.length || !formData.items[0].productId) {
-        setError('At least one product is required');
+        setError('Kamida bitta mahsulot tanlash kerak');
         return;
       }
 
@@ -175,155 +175,183 @@ function Orders() {
       for (const item of formData.items) {
         const product = products.find(p => p._id === item.productId);
         if (!product) {
-          setError(`Product not found`);
+          setError(`Mahsulot topilmadi`);
           return;
         }
 
         if (!item.quantity || item.quantity <= 0) {
-          setError(`Quantity must be greater than 0 for ${product.name}`);
+          setError(`${product.name} uchun miqdor 0 dan katta bo'lishi kerak`);
           return;
         }
 
         if (item.returned < 0) {
-          setError(`Returned amount cannot be negative for ${product.name}`);
+          setError(`${product.name} uchun qaytarilgan miqdor manfiy bo'lishi mumkin emas`);
           return;
         }
 
         if (item.returned > item.quantity) {
-          setError(`Returned amount cannot be greater than ordered quantity for ${product.name}`);
+          setError(`${product.name} uchun qaytarilgan miqdor buyurtma miqdoridan ko'p bo'lishi mumkin emas`);
           return;
         }
 
-        // Yangi buyurtma uchun inventoryni tekshirish
-        if (!editOrder && item.quantity > product.quantity) {
-          setError(`Not enough inventory for ${product.name}. Available: ${product.quantity}`);
+        // Tahrirlash uchun inventarni tekshirish
+        if (editOrder) {
+          const originalOrder = orders.find(o => o._id === editOrder._id);
+          const originalItem = originalOrder.items.find(i => 
+            products.find(p => p._id === item.productId)?.name === i.name
+          );
+          
+          // Yangi buyurilgan miqdor eskisidan ko'p bo'lsa, qo'shimcha miqdor uchun inventarni tekshiramiz
+          if (originalItem && item.quantity > originalItem.quantity) {
+            const additionalQuantity = item.quantity - originalItem.quantity;
+            if (additionalQuantity > product.quantity) {
+              setError(`${product.name} uchun omborda yetarli mahsulot yo'q. Mavjud: ${product.quantity}`);
+              return;
+            }
+          }
+        }
+
+        if (item.price < 0) {
+          setError(`${product.name} uchun narx manfiy bo'lishi mumkin emas`);
           return;
         }
       }
 
       // Prepare order data
       const orderData = {
-        customerName: formData.customerName,
+        customerName: formData.customerName.trim(),
         orderDate: formData.orderDate,
-        items: formData.items.map(item => ({
-          name: products.find(p => p._id === item.productId)?.name || item.name,
-          quantity: parseInt(item.quantity) || 0,
-          returned: parseInt(item.returned) || 0,
-          price: parseFloat(item.price) || 0
-        })),
-        totalAmount: calculateTotalAmount(formData.items)
+        items: formData.items
+          .filter(item => item.productId) // Filter out items with no product selected
+          .map(item => {
+            const product = products.find(p => p._id === item.productId);
+            if (!product) {
+              throw new Error(`Mahsulot topilmadi. Iltimos, qaytadan tanlang.`);
+            }
+            return {
+              name: product.name,
+              quantity: parseInt(item.quantity) || 0,
+              returned: parseInt(item.returned) || 0,
+              price: parseFloat(item.price) || 0,
+            };
+          }),
+        status: formData.status || 'pending',
       };
 
-      if (editOrder) {
-        const response = await ordersAPI.update(editOrder._id, orderData);
-        setOrders(orders.map((order) =>
-          order._id === editOrder._id ? response.data : order
-        ));
-      } else {
-        const response = await ordersAPI.create(orderData);
-        setOrders([...orders, response.data]);
+      // Calculate and add the total amount
+      const totalAmount = calculateTotalAmount(orderData.items);
+      orderData.totalAmount = totalAmount;
+
+      // Ensure we have at least one item
+      if (orderData.items.length === 0) {
+        setError('Kamida bitta mahsulot tanlash kerak');
+        return;
       }
+
+      let response;
+      if (editOrder) {
+        // Update existing order
+        response = await ordersAPI.update(editOrder._id, orderData);
+        setOrders(orders.map((order) => (order._id === editOrder._id ? response.data : order)));
+        setSnackbarMessage('Buyurtma muvaffaqiyatli yangilandi');
+      } else {
+        // Create new order
+        response = await ordersAPI.create(orderData);
+        setOrders([...orders, response.data]);
+        setSnackbarMessage('Buyurtma muvaffaqiyatli yaratildi');
+      }
+
+      setSnackbarSeverity('success');
+      setSnackbarOpen(true);
+      setError('');
       handleClose();
     } catch (err) {
-      console.error('Error saving order:', err);
-      setError(err.response?.data?.error || 'Failed to save order');
+      console.error('Buyurtmani saqlashda xatolik:', err);
+      // Try to display specific error message from server if available
+      const errorMessage = err.response?.data?.error || err.message || 'Buyurtmani saqlashda xatolik yuz berdi';
+      setError(errorMessage);
+      setSnackbarMessage(errorMessage);
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
     }
   };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value,
-    });
+    setFormData({ ...formData, [name]: value });
+  };
+
+  const handleItemChange = (index, field, value) => {
+    const newItems = [...formData.items];
+    newItems[index][field] = value;
+
+    // If product is selected, set its default price
+    if (field === 'productId' && value) {
+      const product = products.find((p) => p._id === value);
+      if (product) {
+        newItems[index].price = product.price;
+        newItems[index].name = product.name;
+      }
+    }
+
+    setFormData({ ...formData, items: newItems });
   };
 
   const handleAddItem = () => {
     setFormData({
       ...formData,
-      items: [...formData.items, { productId: '', quantity: 0, returned: 0, price: 0 }]
+      items: [...formData.items, { productId: '', quantity: 0, returned: 0, price: 0 }],
     });
   };
 
   const handleRemoveItem = (index) => {
-    const newItems = formData.items.filter((_, i) => i !== index);
-    setFormData({
-      ...formData,
-      items: newItems
-    });
-  };
-
-  const handleItemChange = (index, field, value) => {
-    const newItems = [...formData.items];
-    
-    if (field === 'productId') {
-      const product = products.find(p => p._id === value);
-      if (product) {
-        newItems[index] = {
-          ...newItems[index],
-          productId: value,
-          price: product.price,
-          name: product.name,
-          quantity: newItems[index].quantity || 0,
-          returned: newItems[index].returned || 0
-        };
-      }
-    } else if (['quantity', 'returned'].includes(field)) {
-      const currentItem = newItems[index];
-      // Agar value bo'sh bo'lsa, uni o'zgartiramiz
-      if (value === '') {
-        currentItem[field] = '';
-      } else {
-        const numValue = parseInt(value);
-        if (field === 'returned') {
-          // Qaytarilgan miqdor buyurtma miqdoridan oshmasligi kerak
-          if (numValue > currentItem.quantity) {
-            setError(`Returned amount cannot be greater than ordered quantity (${currentItem.quantity})`);
-            return;
-          }
-          currentItem.returned = numValue;
-        } else { // quantity
-          // Miqdor 0 dan kam bo'lmasligi kerak
-          if (numValue < 0) {
-            setError('Quantity cannot be negative');
-            return;
-          }
-          // Agar qaytarilgan miqdor buyurtma miqdoridan oshib ketsa, qaytarilgan miqdorni 0 ga tushiramiz
-          if (currentItem.returned > numValue) {
-            currentItem.returned = 0;
-          }
-          currentItem.quantity = numValue;
-        }
-      }
+    if (formData.items.length === 1) {
+      setError('Kamida bitta mahsulot bo\'lishi kerak');
+      return;
     }
-    
-    setFormData({
-      ...formData,
-      items: newItems
-    });
+    const newItems = [...formData.items];
+    newItems.splice(index, 1);
+    setFormData({ ...formData, items: newItems });
   };
 
-  const handleRowClick = (order) => {
+  const handleViewDetails = (order) => {
     setSelectedOrder(order);
     setDetailsOpen(true);
   };
 
-  const handleDetailsClose = () => {
-    setDetailsOpen(false);
-    setSelectedOrder(null);
+  const handleStatusChange = async (orderId, newStatus) => {
+    try {
+      const order = orders.find(o => o._id === orderId);
+      if (!order) return;
+      
+      const updatedOrder = { ...order, status: newStatus };
+      const response = await ordersAPI.update(orderId, updatedOrder);
+      
+      setOrders(orders.map(o => o._id === orderId ? response.data : o));
+      setSnackbarMessage('Buyurtma holati yangilandi');
+      setSnackbarSeverity('success');
+      setSnackbarOpen(true);
+    } catch (err) {
+      console.error('Buyurtma holatini yangilashda xatolik:', err);
+      setSnackbarMessage('Buyurtma holatini yangilashda xatolik');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+    }
   };
 
-  // Format numbers in input fields
-  const formatNumber = (value) => {
-    if (value === '' || value === null || value === undefined) return '';
-    return value.toString();
+  // Handle snackbar close
+  const handleSnackbarClose = (event, reason) => {
+    if (reason === 'clickaway') {
+      return;
+    }
+    setSnackbarOpen(false);
   };
 
   if (loading) return <CircularProgress />;
   if (error) return <Alert severity="error">{error}</Alert>;
 
   return (
-    <div style={{ padding: '32px', backgroundColor: '#f4f3ff', minHeight: '100vh' }}>
+    <div style={{ padding: { xs: '8px', sm: '16px', md: '32px' } }}>
       <Box sx={{ 
         backgroundColor: 'white', 
         borderRadius: '16px',
@@ -331,10 +359,12 @@ function Orders() {
         overflow: 'hidden'
       }}>
         <Box sx={{ 
-          p: 3, 
+          p: { xs: 2, sm: 3 }, 
           borderBottom: '1px solid rgba(124, 58, 237, 0.2)',
           display: 'flex',
-          alignItems: 'center',
+          flexDirection: { xs: 'column', sm: 'row' },
+          alignItems: { xs: 'flex-start', sm: 'center' },
+          gap: { xs: 2, sm: 0 },
           justifyContent: 'space-between',
           background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)',
           borderTopLeftRadius: '16px',
@@ -345,10 +375,10 @@ function Orders() {
             sx={{ 
               fontWeight: 600,
               color: 'white',
-              fontSize: '1.5rem'
+              fontSize: { xs: '1.25rem', sm: '1.5rem' }
             }}
           >
-            Orders Management
+            Buyurtmalar Boshqaruvi
           </Typography>
           <Button
             variant="contained"
@@ -366,12 +396,13 @@ function Orders() {
               textTransform: 'none',
               boxShadow: '0 2px 10px rgba(255, 255, 255, 0.1)',
               borderRadius: '12px',
-              padding: '10px 24px',
-              fontSize: '0.95rem',
+              padding: { xs: '8px 16px', sm: '10px 24px' },
+              fontSize: { xs: '0.85rem', sm: '0.95rem' },
               fontWeight: 600,
               letterSpacing: '0.3px',
               border: '1px solid rgba(255, 255, 255, 0.2)',
               transition: 'all 0.2s ease',
+              width: { xs: '100%', sm: 'auto' },
               '& .MuiButton-startIcon': {
                 marginRight: '8px',
                 '& svg': {
@@ -380,16 +411,19 @@ function Orders() {
               }
             }}
           >
-            New Order
+            Yangi Buyurtma
           </Button>
         </Box>
 
         <TableContainer 
           sx={{ 
-            p: 3,
+            p: { xs: 1, sm: 2, md: 3 },
             '& .MuiTableCell-root': {
-              borderBottom: '1px solid #e9ecef'
-            }
+              borderBottom: '1px solid #e9ecef',
+              padding: { xs: '8px', sm: '16px' },
+              whiteSpace: { xs: 'nowrap', md: 'normal' }
+            },
+            overflowX: 'auto'
           }}
         >
           <Table>
@@ -399,45 +433,48 @@ function Orders() {
                   fontWeight: 600, 
                   color: '#4a5568',
                   backgroundColor: '#f7fafc',
-                  borderBottom: '2px solid #edf2f7'
-                }}>Order #</TableCell>
+                  borderBottom: '2px solid #edf2f7',
+                  display: { xs: 'none', sm: 'table-cell' }
+                }}>Buyurtma #</TableCell>
                 <TableCell sx={{ 
                   fontWeight: 600, 
                   color: '#4a5568',
                   backgroundColor: '#f7fafc',
                   borderBottom: '2px solid #edf2f7'
-                }}>Customer</TableCell>
+                }}>Mijoz</TableCell>
+                <TableCell sx={{ 
+                  fontWeight: 600, 
+                  color: '#4a5568',
+                  backgroundColor: '#f7fafc',
+                  borderBottom: '2px solid #edf2f7',
+                  display: { xs: 'none', md: 'table-cell' }
+                }}>Sana</TableCell>
                 <TableCell sx={{ 
                   fontWeight: 600, 
                   color: '#4a5568',
                   backgroundColor: '#f7fafc',
                   borderBottom: '2px solid #edf2f7'
-                }}>Date</TableCell>
+                }}>Mahsulotlar</TableCell>
                 <TableCell sx={{ 
                   fontWeight: 600, 
                   color: '#4a5568',
                   backgroundColor: '#f7fafc',
                   borderBottom: '2px solid #edf2f7'
-                }}>Items Info</TableCell>
+                }}>Jami</TableCell>
                 <TableCell sx={{ 
                   fontWeight: 600, 
                   color: '#4a5568',
                   backgroundColor: '#f7fafc',
-                  borderBottom: '2px solid #edf2f7'
-                }}>Total</TableCell>
-                <TableCell sx={{ 
-                  fontWeight: 600, 
-                  color: '#4a5568',
-                  backgroundColor: '#f7fafc',
-                  borderBottom: '2px solid #edf2f7'
-                }}>Actions</TableCell>
+                  borderBottom: '2px solid #edf2f7',
+                  width: { xs: '80px', sm: 'auto' }
+                }}>Amallar</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {orders.map((order) => (
                 <TableRow 
                   key={order._id}
-                  onClick={() => handleRowClick(order)}
+                  onClick={() => handleViewDetails(order)}
                   sx={{ 
                     '&:hover': { 
                       backgroundColor: '#f8f7ff',
@@ -451,27 +488,32 @@ function Orders() {
                     }
                   }}
                 >
-                  <TableCell sx={{ py: 2.5 }}>
+                  <TableCell sx={{ 
+                    py: 2.5,
+                    display: { xs: 'none', sm: 'table-cell' }
+                  }}>
                     {order.orderNumber.replace('ORD-2024-', '')}
                   </TableCell>
                   <TableCell>{order.customerName}</TableCell>
-                  <TableCell>{new Date(order.orderDate).toLocaleDateString()}</TableCell>
+                  <TableCell sx={{
+                    display: { xs: 'none', md: 'table-cell' }
+                  }}>{new Date(order.orderDate).toLocaleDateString()}</TableCell>
                   <TableCell>
                     <Box>
-                      <Typography variant="body2" sx={{ color: '#7c3aed' }}>
+                      <Typography variant="body2" sx={{ color: '#7c3aed', fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
                         Ketdi: {order.items.reduce((sum, item) => sum + item.quantity, 0)} ta
                       </Typography>
-                      <Typography variant="body2" sx={{ color: '#ef4444' }}>
+                      <Typography variant="body2" sx={{ color: '#ef4444', fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
                         Qaytdi: {order.items.reduce((sum, item) => sum + (item.returned || 0), 0)} ta
                       </Typography>
                     </Box>
                   </TableCell>
                   <TableCell>
                     <Box>
-                      <Typography variant="body2" sx={{ color: '#7c3aed', fontWeight: 500, fontSize: '0.95rem' }}>
+                      <Typography variant="body2" sx={{ color: '#7c3aed', fontWeight: 500, fontSize: { xs: '0.85rem', sm: '0.95rem' } }}>
                         {formatPrice(order.totalAmount)}
                       </Typography>
-                      <Typography variant="caption" sx={{ color: '#ef4444', display: 'block' }}>
+                      <Typography variant="caption" sx={{ color: '#ef4444', display: 'block', fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
                         Qaytarildi: {formatPrice(order.items.reduce((sum, item) => sum + ((item.returned || 0) * item.price), 0))}
                       </Typography>
                     </Box>
@@ -479,9 +521,10 @@ function Orders() {
                   <TableCell>
                     <Box sx={{ 
                       display: 'flex', 
-                      flexDirection: 'column',
+                      flexDirection: { xs: 'row', md: 'column' },
                       gap: 1,
-                      alignItems: 'center'
+                      alignItems: 'center',
+                      justifyContent: { xs: 'center', md: 'flex-start' }
                     }}>
                       <IconButton
                         size="small"
@@ -495,9 +538,9 @@ function Orders() {
                           '&:hover': { 
                             background: 'linear-gradient(135deg, #6d28d9 0%, #5b21b6 100%)'
                           },
-                          padding: '8px',
-                          width: '34px',
-                          height: '34px',
+                          padding: { xs: '6px', sm: '8px' },
+                          width: { xs: '30px', sm: '34px' },
+                          height: { xs: '30px', sm: '34px' },
                           boxShadow: '0 2px 8px rgba(124, 58, 237, 0.2)',
                           transition: 'all 0.2s ease'
                         }}
@@ -516,9 +559,9 @@ function Orders() {
                           '&:hover': { 
                             background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)'
                           },
-                          padding: '8px',
-                          width: '34px',
-                          height: '34px',
+                          padding: { xs: '6px', sm: '8px' },
+                          width: { xs: '30px', sm: '34px' },
+                          height: { xs: '30px', sm: '34px' },
                           boxShadow: '0 2px 8px rgba(239, 68, 68, 0.2)',
                           transition: 'all 0.2s ease'
                         }}
@@ -539,10 +582,12 @@ function Orders() {
         onClose={handleClose}
         maxWidth="md"
         fullWidth
+        fullScreen={window.innerWidth < 600}
         PaperProps={{
           sx: {
-            borderRadius: '8px',
-            boxShadow: '0 8px 16px rgba(0,0,0,0.1)'
+            borderRadius: { xs: 0, sm: '16px' },
+            m: { xs: 0, sm: 2 },
+            maxHeight: { xs: '100%', sm: 'calc(100% - 64px)' }
           }
         }}
       >
@@ -552,13 +597,13 @@ function Orders() {
           fontSize: '1.1rem',
           fontWeight: 500
         }}>
-          {editOrder ? 'Edit Order' : 'New Order'}
+          {editOrder ? 'Buyurtmani Tahrirlash' : 'Yangi Buyurtma'}
         </DialogTitle>
         <DialogContent sx={{ padding: '24px' }}>
           <TextField
             margin="dense"
             name="customerName"
-            label="Customer Name"
+            label="Mijoz Ismi"
             type="text"
             fullWidth
             value={formData.customerName}
@@ -568,15 +613,21 @@ function Orders() {
           <TextField
             margin="dense"
             name="orderDate"
-            label="Order Date"
+            label="Buyurtma Sanasi"
             type="date"
             fullWidth
             value={formData.orderDate}
             onChange={handleInputChange}
             sx={{ mb: 3 }}
+            InputLabelProps={{
+              shrink: true,
+            }}
+            inputProps={{
+              max: "2100-12-31"
+            }}
           />
           
-          <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 500 }}>Order Items</Typography>
+          <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 500 }}>Buyurtma Mahsulotlari</Typography>
           
           {formData.items.map((item, index) => (
             <Box 
@@ -598,47 +649,49 @@ function Orders() {
                 }}
               >
                 <FormControl fullWidth margin="normal">
-                  <InputLabel>Product</InputLabel>
+                  <InputLabel>Mahsulot</InputLabel>
                   <Select
                     value={item.productId || ''}
                     onChange={(e) => handleItemChange(index, 'productId', e.target.value)}
                   >
                     {products.map((product) => (
                       <MenuItem key={product._id} value={product._id}>
-                        {product.name} - Stock: {product.quantity}
+                        {product.name} - Omborda: {product.quantity}
                       </MenuItem>
                     ))}
                   </Select>
                 </FormControl>
                 <TextField
-                  label="Quantity"
+                  label="Miqdori"
                   type="number"
-                  value={formatNumber(item.quantity)}
+                  value={item.quantity}
                   onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
                   margin="normal"
                   fullWidth
                   inputProps={{ min: 0 }}
                   error={item.quantity < 0}
-                  helperText={item.quantity < 0 ? "Quantity cannot be negative" : ""}
+                  helperText={item.quantity < 0 ? "Miqdor manfiy bo'lishi mumkin emas" : ""}
                 />
                 <TextField
-                  label="Returned"
+                  label="Qaytarilgan"
                   type="number"
-                  value={formatNumber(item.returned)}
+                  value={item.returned}
                   onChange={(e) => handleItemChange(index, 'returned', e.target.value)}
                   margin="normal"
                   fullWidth
                   inputProps={{ min: 0, max: item.quantity }}
                   error={item.returned > item.quantity}
-                  helperText={item.returned > item.quantity ? "Cannot return more than ordered" : ""}
+                  helperText={item.returned > item.quantity ? "Buyurtmadan ko'p qaytarish mumkin emas" : ""}
                 />
                 <TextField
-                  label="Price"
+                  label="Narxi"
                   type="number"
-                  value={formatNumber(item.price)}
-                  disabled
+                  value={item.price}
+                  onChange={(e) => handleItemChange(index, 'price', e.target.value)}
                   margin="normal"
                   fullWidth
+                  error={item.price < 0}
+                  helperText={item.price < 0 ? "Narx manfiy bo'lishi mumkin emas" : ""}
                 />
                 {formData.items.length > 1 && (
                   <IconButton 
@@ -647,11 +700,12 @@ function Orders() {
                       handleRemoveItem(index);
                     }}
                     sx={{ 
-                      color: '#f44336',
+                      color: 'white',
+                      backgroundColor: '#ef4444',
                       width: '40px',
                       height: '40px',
                       '&:hover': {
-                        backgroundColor: 'rgba(244, 67, 54, 0.08)'
+                        backgroundColor: '#dc2626'
                       }
                     }}
                   >
@@ -668,27 +722,26 @@ function Orders() {
                 borderTop: '1px solid #f0f0f0'
               }}>
                 <Typography variant="body2" sx={{ color: '#666' }}>
-                  Item Total: {formatPrice((item.quantity - item.returned) * item.price)}
+                  Jami: {formatPrice((item.quantity - item.returned) * item.price)}
                 </Typography>
               </Box>
             </Box>
           ))}
           
           <Button
-            variant="outlined"
+            variant="contained"
             onClick={handleAddItem}
             startIcon={<AddIcon />}
             sx={{ 
               mt: 1,
-              borderColor: '#1976d2',
-              color: '#1976d2',
+              backgroundColor: '#1976d2',
+              color: 'white',
               '&:hover': {
-                borderColor: '#1565c0',
-                backgroundColor: 'rgba(25, 118, 210, 0.04)'
+                backgroundColor: '#1565c0'
               }
             }}
           >
-            Add Item
+            Mahsulot Qo'shish
           </Button>
 
           {/* Order Summary */}
@@ -701,18 +754,18 @@ function Orders() {
               border: '1px solid #e0e0e0'
             }}>
               <Typography variant="subtitle2" sx={{ mb: 1, color: '#1976d2' }}>
-                Order Summary
+                Buyurtma Xulasasi
               </Typography>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
                 <Typography variant="body2" sx={{ color: '#666' }}>
-                  Total Items: {formData.items.reduce((sum, item) => sum + item.quantity, 0)}
+                  Jami Mahsulotlar: {formData.items.reduce((sum, item) => sum + item.quantity, 0)}
                 </Typography>
                 <Typography variant="body2" sx={{ color: '#666' }}>
-                  Returned Items: {formData.items.reduce((sum, item) => sum + item.returned, 0)}
+                  Qaytarilgan Mahsulotlar: {formData.items.reduce((sum, item) => sum + item.returned, 0)}
                 </Typography>
               </Box>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
-                <Typography variant="subtitle2">Total Amount:</Typography>
+                <Typography variant="subtitle2">Umumiy Summa:</Typography>
                 <Typography variant="subtitle2" sx={{ color: '#1976d2' }}>
                   {formatPrice(calculateTotalAmount(formData.items))}
                 </Typography>
@@ -727,13 +780,14 @@ function Orders() {
           <Button 
             onClick={handleClose}
             sx={{ 
-              color: '#666',
+              color: 'white',
+              backgroundColor: '#6b7280',
               '&:hover': {
-                backgroundColor: '#f5f5f5'
+                backgroundColor: '#4b5563'
               }
             }}
           >
-            Cancel
+            Bekor Qilish
           </Button>
           <Button 
             onClick={handleSubmit} 
@@ -747,7 +801,7 @@ function Orders() {
               boxShadow: 'none'
             }}
           >
-            {editOrder ? 'Save Changes' : 'Create Order'}
+            {editOrder ? 'O\'zgarishlarni Saqlash' : 'Buyurtma Yaratish'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -755,9 +809,9 @@ function Orders() {
       <Snackbar
         open={snackbarOpen}
         autoHideDuration={6000}
-        onClose={() => setSnackbarOpen(false)}
+        onClose={handleSnackbarClose}
       >
-        <Alert onClose={() => setSnackbarOpen(false)} severity={snackbarSeverity}>
+        <Alert onClose={handleSnackbarClose} severity={snackbarSeverity}>
           {snackbarMessage}
         </Alert>
       </Snackbar>
@@ -765,13 +819,18 @@ function Orders() {
       {/* Order Details Dialog */}
       <Dialog
         open={detailsOpen}
-        onClose={handleDetailsClose}
+        onClose={() => {
+          setDetailsOpen(false);
+          setSelectedOrder(null);
+        }}
         maxWidth="md"
         fullWidth
+        fullScreen={window.innerWidth < 600}
         PaperProps={{
           sx: {
-            borderRadius: '8px',
-            boxShadow: '0 8px 16px rgba(0,0,0,0.1)'
+            borderRadius: { xs: 0, sm: '16px' },
+            m: { xs: 0, sm: 2 },
+            maxHeight: { xs: '100%', sm: 'calc(100% - 64px)' }
           }
         }}
       >
@@ -787,7 +846,7 @@ function Orders() {
               alignItems: 'center'
             }}>
               <Box>
-                Order Details - #{selectedOrder.orderNumber}
+                Buyurtma Tafsilotlari - #{selectedOrder.orderNumber}
               </Box>
               <Typography variant="body2" sx={{ color: '#666' }}>
                 {new Date(selectedOrder.orderDate).toLocaleDateString()}
@@ -796,7 +855,7 @@ function Orders() {
             <DialogContent sx={{ padding: '24px' }}>
               <Box sx={{ mb: 3 }}>
                 <Typography variant="subtitle2" sx={{ color: '#666', mb: 1 }}>
-                  Customer Information
+                  Mijoz Ma'lumotlari
                 </Typography>
                 <Typography variant="h6" sx={{ color: '#1a237e' }}>
                   {selectedOrder.customerName}
@@ -804,18 +863,18 @@ function Orders() {
               </Box>
 
               <Typography variant="subtitle2" sx={{ color: '#666', mb: 2 }}>
-                Order Items
+                Buyurtma Mahsulotlari
               </Typography>
               
               <TableContainer sx={{ mb: 3 }}>
                 <Table>
                   <TableHead>
                     <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
-                      <TableCell sx={{ fontWeight: 500 }}>Product</TableCell>
-                      <TableCell sx={{ fontWeight: 500 }}>Quantity</TableCell>
-                      <TableCell sx={{ fontWeight: 500 }}>Returned</TableCell>
-                      <TableCell sx={{ fontWeight: 500 }}>Price</TableCell>
-                      <TableCell sx={{ fontWeight: 500 }}>Total</TableCell>
+                      <TableCell sx={{ fontWeight: 500 }}>Mahsulot</TableCell>
+                      <TableCell sx={{ fontWeight: 500 }}>Miqdori</TableCell>
+                      <TableCell sx={{ fontWeight: 500 }}>Qaytarilgan</TableCell>
+                      <TableCell sx={{ fontWeight: 500 }}>Narxi</TableCell>
+                      <TableCell sx={{ fontWeight: 500 }}>Jami</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -855,7 +914,7 @@ function Orders() {
               }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                   <Typography variant="body2" sx={{ color: '#666' }}>
-                    Total Items:
+                    Jami Mahsulotlar:
                   </Typography>
                   <Typography variant="body2">
                     {selectedOrder.items.reduce((sum, item) => sum + item.quantity, 0)} ta
@@ -863,7 +922,7 @@ function Orders() {
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                   <Typography variant="body2" sx={{ color: '#666' }}>
-                    Returned Items:
+                    Qaytarilgan Mahsulotlar:
                   </Typography>
                   <Typography variant="body2" sx={{ color: '#f44336' }}>
                     {selectedOrder.items.reduce((sum, item) => sum + item.returned, 0)} ta
@@ -871,7 +930,7 @@ function Orders() {
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                   <Typography variant="body2" sx={{ color: '#666' }}>
-                    Total Returns Amount:
+                    Qaytarilgan Summa:
                   </Typography>
                   <Typography variant="body2" sx={{ color: '#f44336' }}>
                     {formatPrice(selectedOrder.items.reduce((sum, item) => sum + (item.returned * item.price), 0))}
@@ -885,7 +944,7 @@ function Orders() {
                   borderTop: '1px solid #e0e0e0'
                 }}>
                   <Typography variant="subtitle2">
-                    Final Amount:
+                    Yakuniy Summa:
                   </Typography>
                   <Typography variant="subtitle2" sx={{ color: '#1976d2' }}>
                     {formatPrice(selectedOrder.totalAmount)}
@@ -898,24 +957,15 @@ function Orders() {
               borderTop: '1px solid #e0e0e0'
             }}>
               <Button 
-                onClick={handleDetailsClose}
-                sx={{ 
-                  color: '#666',
-                  '&:hover': {
-                    backgroundColor: '#f5f5f5'
-                  }
-                }}
-              >
-                Close
-              </Button>
-              <Button 
                 onClick={() => {
-                  handleDetailsClose();
+                  setDetailsOpen(false);
+                  setSelectedOrder(null);
                   handleEdit(selectedOrder);
                 }}
                 variant="contained"
                 sx={{
                   backgroundColor: '#1976d2',
+                  color: 'white',
                   '&:hover': {
                     backgroundColor: '#1565c0'
                   },
@@ -923,7 +973,7 @@ function Orders() {
                   boxShadow: 'none'
                 }}
               >
-                Edit Order
+                Buyurtmani Tahrirlash
               </Button>
             </DialogActions>
           </>
@@ -934,10 +984,13 @@ function Orders() {
       <Dialog
         open={deleteDialogOpen}
         onClose={handleDeleteCancel}
+        maxWidth="sm"
+        fullWidth
         PaperProps={{
           sx: {
-            borderRadius: '12px',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
+            borderRadius: { xs: '12px', sm: '16px' },
+            overflow: 'hidden',
+            m: { xs: 2, sm: 4 }
           }
         }}
       >
@@ -948,21 +1001,21 @@ function Orders() {
           fontSize: '1.1rem',
           fontWeight: 600
         }}>
-          Delete Order Confirmation
+          Buyurtmani O'chirish Tasdiqlash
         </DialogTitle>
         <DialogContent sx={{ p: 3, pt: 2 }}>
           <Typography>
-            Are you sure you want to delete this order?
+            Haqiqatan ham bu buyurtmani o'chirishni xohlaysizmi?
             {orderToDelete && (
               <Box sx={{ mt: 2, p: 2, backgroundColor: '#fee2e2', borderRadius: '8px' }}>
                 <Typography sx={{ fontWeight: 500, color: '#991b1b', mb: 1 }}>
-                  Order Details:
+                  Buyurtma Ma'lumotlari:
                 </Typography>
                 <Typography sx={{ color: '#7f1d1d' }}>
-                  Customer: {orderToDelete.customerName}
+                  Mijoz: {orderToDelete.customerName}
                 </Typography>
                 <Typography sx={{ color: '#7f1d1d' }}>
-                  Total Amount: {formatPrice(orderToDelete.totalAmount)}
+                  Umumiy Summa: {formatPrice(orderToDelete.totalAmount)}
                 </Typography>
               </Box>
             )}
@@ -972,16 +1025,18 @@ function Orders() {
           <Button 
             onClick={handleDeleteCancel}
             sx={{ 
-              color: '#4b5563',
+              color: 'white',
+              backgroundColor: '#6b7280',
               '&:hover': {
-                backgroundColor: '#f3f4f6'
+                backgroundColor: '#4b5563'
               }
             }}
           >
-            Cancel
+            Bekor Qilish
           </Button>
           <Button 
             onClick={handleDeleteConfirm}
+            variant="contained"
             sx={{
               backgroundColor: '#ef4444',
               color: 'white',
@@ -990,7 +1045,7 @@ function Orders() {
               }
             }}
           >
-            Delete
+            O'chirish
           </Button>
         </DialogActions>
       </Dialog>
