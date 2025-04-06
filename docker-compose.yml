@@ -17,7 +17,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 150M
+          memory: 400M
 
   frontend:
     build: ./warehouse-frontend
@@ -25,6 +25,8 @@ services:
     restart: always
     ports:
       - "8082:80"
+    volumes:
+      - ./warehouse-frontend/build:/usr/share/nginx/html
     depends_on:
       - backend
     networks:
@@ -32,7 +34,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 200M
+          memory: 450M
 
 networks:
   app-network:
