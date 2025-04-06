@@ -331,7 +331,9 @@ function Orders() {
               
               // Agar farq musbat bo'lsa (ko'proq so'ralgan)
               if (difference > 0 && difference > product.quantity) {
-                showAlert(`Omborda yetarli mahsulot yo'q. Mavjud: ${product.quantity}`, 'error');
+                setSnackbarMessage(`Omborda yetarli mahsulot yo'q. Mavjud: ${product.quantity}`);
+                setSnackbarSeverity('error');
+                setSnackbarOpen(true);
                 return;
               }
             }
@@ -341,7 +343,9 @@ function Orders() {
           if (field === 'quantity') {
             const product = products.find(p => p._id === newItems[index].productId);
             if (product && numValue > product.quantity) {
-              showAlert(`Omborda yetarli mahsulot yo'q. Mavjud: ${product.quantity}`, 'error');
+              setSnackbarMessage(`Omborda yetarli mahsulot yo'q. Mavjud: ${product.quantity}`);
+              setSnackbarSeverity('error');
+              setSnackbarOpen(true);
               return;
             }
           }
