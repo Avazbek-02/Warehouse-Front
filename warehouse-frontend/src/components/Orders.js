@@ -283,18 +283,46 @@ function Orders() {
 
   const handleItemChange = (index, field, value) => {
     const newItems = [...formData.items];
-    newItems[index][field] = value;
-
-    // If product is selected, set its default price
-    if (field === 'productId' && value) {
-      const product = products.find((p) => p._id === value);
-      if (product) {
-        newItems[index].price = product.price;
-        newItems[index].name = product.name;
+    
+    if (['quantity', 'price', 'returned'].includes(field)) {
+      // Bo'sh qiymat yoki 0 ni qabul qilish
+      if (value === '' || value === '0') {
+        newItems[index] = {
+          ...newItems[index],
+          [field]: ''
+        };
+        setFormData({
+          ...formData,
+          items: newItems
+        });
+        return;
       }
+      
+      // Faqat raqamlarni qabul qilish
+      const numValue = parseInt(value);
+      if (!isNaN(numValue) && numValue >= 0) {
+        // Qaytarilgan miqdor buyurtma miqdoridan ko'p bo'lmasligi kerak
+        if (field === 'returned' && numValue > newItems[index].quantity) {
+          return;
+        }
+        
+        newItems[index] = {
+          ...newItems[index],
+          [field]: numValue
+        };
+      }
+    } else {
+      // Boshqa maydonlar uchun odatiy logika
+      newItems[index] = {
+        ...newItems[index],
+        [field]: value
+      };
     }
-
-    setFormData({ ...formData, items: newItems });
+    
+    setFormData({
+      ...formData,
+      items: newItems
+    });
   };
 
   const handleAddItem = () => {

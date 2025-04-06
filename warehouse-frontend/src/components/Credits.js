@@ -157,29 +157,53 @@ function Credits() {
   const handleItemChange = (index, field, value) => {
     const newItems = [...formData.items];
     
-    if (field === 'name') {
-      const product = products.find(p => p.name === value);
-      if (product) {
+    if (['quantity', 'price'].includes(field)) {
+      // Bo'sh qiymat yoki 0 ni qabul qilish
+      if (value === '' || value === '0') {
         newItems[index] = {
           ...newItems[index],
-          name: value,
-          price: product.price,
-          maxQuantity: product.quantity // Save available quantity
+          [field]: ''
         };
+        setFormData({
+          ...formData,
+          items: newItems
+        });
+        return;
       }
-    } else if (['quantity', 'price'].includes(field)) {
-      if (value === '') {
-        newItems[index][field] = '';
-      } else {
-        const numValue = parseInt(value);
+      
+      // Faqat raqamlarni qabul qilish
+      const numValue = parseInt(value);
+      if (!isNaN(numValue) && numValue >= 0) {
+        // Miqdor mavjud tovardan ko'p bo'lmasligi kerak
         if (field === 'quantity') {
           const product = products.find(p => p.name === newItems[index].name);
           if (product && numValue > product.quantity) {
-            showAlert(`Only ${product.quantity} items available in inventory`, 'error');
             return;
           }
         }
-        newItems[index][field] = numValue >= 0 ? numValue : 0;
+        
+        newItems[index] = {
+          ...newItems[index],
+          [field]: numValue
+        };
+      }
+    } else {
+      // Boshqa maydonlar uchun odatiy logika
+      if (field === 'name') {
+        const product = products.find(p => p.name === value);
+        if (product) {
+          newItems[index] = {
+            ...newItems[index],
+            name: value,
+            price: product.price,
+            maxQuantity: product.quantity
+          };
+        }
+      } else {
+        newItems[index] = {
+          ...newItems[index],
+          [field]: value
+        };
       }
     }
     

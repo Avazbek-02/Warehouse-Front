@@ -85,10 +85,33 @@ function Inventory() {
   // Handle form input change
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: name === 'quantity' || name === 'price' ? Number(value) : value,
-    });
+    
+    // Raqamli maydonlar uchun maxsus logika
+    if (name === 'quantity' || name === 'price' || name === 'addQuantity') {
+      // Bo'sh qiymat yoki 0 ni qabul qilish
+      if (value === '' || value === '0') {
+        setFormData({
+          ...formData,
+          [name]: ''
+        });
+        return;
+      }
+      
+      // Faqat raqamlarni qabul qilish
+      const numValue = parseInt(value);
+      if (!isNaN(numValue) && numValue >= 0) {
+        setFormData({
+          ...formData,
+          [name]: numValue
+        });
+      }
+    } else {
+      // Boshqa maydonlar uchun odatiy logika
+      setFormData({
+        ...formData,
+        [name]: value
+      });
+    }
   };
 
   // Open add product dialog

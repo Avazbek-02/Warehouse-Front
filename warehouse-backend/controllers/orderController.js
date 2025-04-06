@@ -92,7 +92,7 @@ exports.updateOrder = async (req, res) => {
     for (const oldItem of oldOrder.items) {
       const product = await Product.findOne({ name: oldItem.name });
       if (product) {
-        // Eski o'zgarishlarni bekor qilish: ketgan - qaytgan = inventoryga qo'shiladigan miqdor
+        // Eski o'zgarishlarni bekor qilish
         const oldNetQuantity = oldItem.quantity - (oldItem.returned || 0);
         product.quantity += oldNetQuantity;
         await product.save({ session });
@@ -106,22 +106,27 @@ exports.updateOrder = async (req, res) => {
         throw new Error(`Product ${newItem.name} not found`);
       }
 
-      // Yangi o'zgarishlarni qo'llash: ketgan - qaytgan = inventorydan ayiriladigan miqdor
+      // Yangi o'zgarishlarni qo'llash
       const newNetQuantity = newItem.quantity - (newItem.returned || 0);
       
       if (product.quantity < newNetQuantity) {
         throw new Error(`Not enough inventory for ${newItem.name}. Available: ${product.quantity}, Required: ${newNetQuantity}`);
       }
 
+      // Faqat haqiqiy kerakli miqdorni ayiramiz
       product.quantity -= newNetQuantity;
       await product.save({ session });
     }
 
-    // Update order
+    // Update order with new values
     const updatedOrder = await Order.findByIdAndUpdate(
       req.params.id,
       {
         ...req.body,
+        items: req.body.items.map(item => ({
+          ...item,
+          returned: item.returned || 0 // Qaytarilgan miqdorni 0 ga tenglashtirish agar bo'sh bo'lsa
+        })),
         updatedAt: Date.now()
       },
       { new: true, runValidators: true, session }
