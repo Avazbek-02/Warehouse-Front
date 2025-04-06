@@ -8,7 +8,8 @@ RUN npm install
 
 COPY . .
 
-RUN npm run build
+# Limit Node.js memory usage during build
+RUN NODE_OPTIONS="--max-old-space-size=384" npm run build
 
 FROM nginx:alpine
 
