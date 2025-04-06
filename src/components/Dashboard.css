@@ -1,0 +1,19 @@
+.MuiDrawer-paper {
+  background-color: #f8f9fa !important;
+}
+
+.MuiListItem-root.Mui-selected {
+  background-color: rgba(0, 123, 255, 0.1) !important;
+}
+
+.MuiListItem-root:hover {
+  background-color: rgba(0, 123, 255, 0.05) !important;
+}
+
+.MuiAppBar-root {
+  background-color: #007bff !important;
+}
+
+.dashboard-content {
+  padding: 20px;
+} 
