@@ -34,7 +34,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 450M
+          memory: 700M
 
 networks:
   app-network:
