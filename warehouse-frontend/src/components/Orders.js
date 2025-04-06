@@ -284,7 +284,19 @@ function Orders() {
   const handleItemChange = (index, field, value) => {
     const newItems = [...formData.items];
     
-    if (['quantity', 'price', 'returned'].includes(field)) {
+    if (field === 'productId') {
+      // Mahsulot tanlaganda narxni avtomatik olish
+      const product = products.find(p => p._id === value);
+      if (product) {
+        newItems[index] = {
+          ...newItems[index],
+          productId: value,
+          name: product.name,
+          price: product.price,
+          maxQuantity: product.quantity
+        };
+      }
+    } else if (['quantity', 'returned'].includes(field)) {
       // Bo'sh qiymat yoki 0 ni qabul qilish
       if (value === '' || value === '0') {
         newItems[index] = {
@@ -305,18 +317,41 @@ function Orders() {
         if (field === 'returned' && numValue > newItems[index].quantity) {
           return;
         }
+
+        // Agar edit qilish bo'lsa
+        if (editOrder) {
+          const originalOrder = editOrder;
+          const originalItem = originalOrder.items.find(i => i.name === newItems[index].name);
+          
+          if (field === 'quantity') {
+            const product = products.find(p => p._id === newItems[index].productId);
+            if (product) {
+              // Eski miqdor va yangi miqdor farqini tekshirish
+              const difference = numValue - (originalItem ? originalItem.quantity : 0);
+              
+              // Agar farq musbat bo'lsa (ko'proq so'ralgan)
+              if (difference > 0 && difference > product.quantity) {
+                showAlert(`Omborda yetarli mahsulot yo'q. Mavjud: ${product.quantity}`, 'error');
+                return;
+              }
+            }
+          }
+        } else {
+          // Yangi buyurtma uchun
+          if (field === 'quantity') {
+            const product = products.find(p => p._id === newItems[index].productId);
+            if (product && numValue > product.quantity) {
+              showAlert(`Omborda yetarli mahsulot yo'q. Mavjud: ${product.quantity}`, 'error');
+              return;
+            }
+          }
+        }
         
         newItems[index] = {
           ...newItems[index],
           [field]: numValue
         };
       }
-    } else {
-      // Boshqa maydonlar uchun odatiy logika
-      newItems[index] = {
-        ...newItems[index],
-        [field]: value
-      };
     }
     
     setFormData({

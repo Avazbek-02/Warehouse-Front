@@ -88,44 +88,44 @@ exports.updateOrder = async (req, res) => {
       throw new Error('Order not found');
     }
 
-    // Revert previous inventory changes
+    // Eski buyurtmadagi mahsulotlarni omborga qaytarish
     for (const oldItem of oldOrder.items) {
       const product = await Product.findOne({ name: oldItem.name });
       if (product) {
-        // Eski o'zgarishlarni bekor qilish
+        // Eski o'zgarishlarni bekor qilish: faqat haqiqiy chiqarilgan miqdorni qaytarish
         const oldNetQuantity = oldItem.quantity - (oldItem.returned || 0);
         product.quantity += oldNetQuantity;
         await product.save({ session });
       }
     }
 
-    // Apply new inventory changes
+    // Yangi buyurtma ma'lumotlarini qo'llash
     for (const newItem of req.body.items) {
       const product = await Product.findOne({ name: newItem.name });
       if (!product) {
         throw new Error(`Product ${newItem.name} not found`);
       }
 
-      // Yangi o'zgarishlarni qo'llash
+      // Yangi miqdorni hisoblash: buyurtma - qaytarilgan
       const newNetQuantity = newItem.quantity - (newItem.returned || 0);
       
       if (product.quantity < newNetQuantity) {
         throw new Error(`Not enough inventory for ${newItem.name}. Available: ${product.quantity}, Required: ${newNetQuantity}`);
       }
 
-      // Faqat haqiqiy kerakli miqdorni ayiramiz
+      // Faqat haqiqiy kerakli miqdorni ayirish
       product.quantity -= newNetQuantity;
       await product.save({ session });
     }
 
-    // Update order with new values
+    // Buyurtmani yangilash
     const updatedOrder = await Order.findByIdAndUpdate(
       req.params.id,
       {
         ...req.body,
         items: req.body.items.map(item => ({
           ...item,
-          returned: item.returned || 0 // Qaytarilgan miqdorni 0 ga tenglashtirish agar bo'sh bo'lsa
+          returned: item.returned || 0
         })),
         updatedAt: Date.now()
       },
