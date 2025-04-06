@@ -17,7 +17,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 400M
+          memory: 800M
 
   frontend:
     build: ./warehouse-frontend
@@ -34,7 +34,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 700M
+          memory: 800M
 
 networks:
   app-network:

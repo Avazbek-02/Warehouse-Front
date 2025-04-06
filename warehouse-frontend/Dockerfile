@@ -9,7 +9,7 @@ RUN npm install
 COPY . .
 
 # Increase memory limit for build process
-RUN NODE_OPTIONS="--max-old-space-size=450" npm run build
+RUN NODE_OPTIONS="--max-old-space-size=350" npm run build
 
 FROM nginx:alpine
 
